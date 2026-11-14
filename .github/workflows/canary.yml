@@ -1,0 +1,65 @@
+name: Canary (live Apple Music)
+
+# Reads real public playlists once a day so we notice quickly when Apple changes the page or API.
+# A failure opens (or comments on) an issue labelled "canary".
+on:
+  schedule:
+    - cron: "17 13 * * *" # daily, 13:17 UTC
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "src/**"
+      - ".github/workflows/canary.yml"
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  canary:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Apple-curated, about 100 songs: exercises the HTML page path.
+          - name: page
+            url: https://music.apple.com/us/playlist/todays-hits/pl.f4d106fed2bd41149aaacabb233eb5eb
+            args: --min-tracks 50 --expect-complete
+          # More than 300 songs: exercises paging through the web-player API.
+          - name: paging
+            url: https://music.apple.com/us/playlist/10-years-of-apple-music-top-songs/pl.c125e4b2998a4015abbe6b9ae90d5479
+            args: --min-tracks 301 --expect-complete
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - run: dotnet build src/AppleMusicPlaylist.Cli -c Release
+      - name: Read playlist
+        run: |
+          dotnet src/AppleMusicPlaylist.Cli/bin/Release/net8.0/applemusic-playlist.dll \
+            "${{ matrix.url }}" ${{ matrix.args }} --format albums --dump dump > albums.tsv
+          head -n 20 albums.tsv
+      - name: Upload responses (JWTs redacted)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: canary-${{ matrix.name }}
+          path: dump/
+          retention-days: 7
+          if-no-files-found: ignore
+      - name: Open issue on scheduled failure
+        if: failure() && github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh label create canary --color B60205 --description "Live canary failure" 2>/dev/null || true
+          existing=$(gh issue list --label canary --state open --json number --jq '.[0].number')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body "Still failing (${{ matrix.name }}): $RUN_URL"
+          else
+            gh issue create --label canary --title "Canary failing: Apple Music scraping broke" \
+              --body "The daily canary (${{ matrix.name }}) failed: $RUN_URL"
+          fi
