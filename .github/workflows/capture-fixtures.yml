@@ -1,0 +1,24 @@
+name: Capture fixtures (temporary)
+on:
+  push:
+    branches: [claude/project-thread-qzkwbm]
+    paths: [".github/workflows/capture-fixtures.yml"]
+permissions:
+  contents: write
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - run: dotnet build src/AppleMusicPlaylist.Cli -c Release
+      - run: |
+          cli=src/AppleMusicPlaylist.Cli/bin/Release/net8.0/applemusic-playlist.dll
+          dotnet $cli https://music.apple.com/us/playlist/todays-hits/pl.f4d106fed2bd41149aaacabb233eb5eb --dump capture/page > /dev/null
+          dotnet $cli https://music.apple.com/us/playlist/10-years-of-apple-music-top-songs/pl.c125e4b2998a4015abbe6b9ae90d5479 --dump capture/paging > /dev/null
+          if grep -rl "eyJ" capture; then echo "token-like string found"; exit 1; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add capture && git commit -m "Capture raw responses for fixtures (temporary)" && git push
