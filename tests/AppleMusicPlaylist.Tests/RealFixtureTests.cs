@@ -40,12 +40,12 @@ public class RealFixtureTests
         var p1 = PageParser.ParseTracksApi(Fixture.Read("ten-years-api-300.json"));
         Assert.Equal(100, p1.Tracks.Count);
         Assert.Equal($"/v1/catalog/us/playlists/{TenYearsId}/tracks?l=en-US&offset=400", p1.NextPath);
-        Assert.Equal(new PlaylistTrack("Sweet Child O' Mine", "Guns N' Roses", "Appetite For Destruction (Super Deluxe)"), p1.Tracks[0]);
+        Assert.Equal(new PlaylistTrack("Sweet Child O' Mine", "Guns N' Roses", "Appetite For Destruction (Super Deluxe)", "Guns N' Roses"), p1.Tracks[0]);
 
         var p2 = PageParser.ParseTracksApi(Fixture.Read("ten-years-api-400.json"));
         Assert.Equal(100, p2.Tracks.Count);
         Assert.Null(p2.NextPath);
-        Assert.Equal(new PlaylistTrack("Fair Trade (feat. Travis Scott)", "Drake", "Certified Lover Boy"), p2.Tracks[^1]);
+        Assert.Equal(new PlaylistTrack("Fair Trade (feat. Travis Scott)", "Drake", "Certified Lover Boy", "Drake"), p2.Tracks[^1]);
     }
 
     [Fact]
@@ -64,5 +64,7 @@ public class RealFixtureTests
         Assert.Equal(500, pl.Tracks.Count);
         Assert.False(pl.Truncated);
         Assert.Equal("Apple Music", pl.Curator);
+        Assert.All(pl.Tracks.Take(300), t => Assert.Null(t.AlbumArtistName));
+        Assert.All(pl.Tracks.Skip(300), t => Assert.NotNull(t.AlbumArtistName));
     }
 }

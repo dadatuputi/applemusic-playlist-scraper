@@ -1,7 +1,14 @@
 namespace AppleMusicPlaylist;
 
 /// <summary>One song in an Apple Music playlist.</summary>
-public sealed record PlaylistTrack(string Title, string ArtistName, string? AlbumName);
+/// <param name="Title">Song title.</param>
+/// <param name="ArtistName">Apple's display artist; a duet reads "A &amp; B".</param>
+/// <param name="AlbumName">Album title, or null if Apple gives none.</param>
+/// <param name="AlbumArtistName">
+/// The album's artist when known. Only songs read through the paging API (past the first 300) have it;
+/// songs from the HTML page leave it null. Use <c>AlbumArtistName ?? ArtistName</c> for album lookups.
+/// </param>
+public sealed record PlaylistTrack(string Title, string ArtistName, string? AlbumName, string? AlbumArtistName = null);
 
 /// <summary>A public Apple Music playlist as read from music.apple.com.</summary>
 public sealed record Playlist

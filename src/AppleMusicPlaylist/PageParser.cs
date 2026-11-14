@@ -119,7 +119,7 @@ public static partial class PageParser
             var title = Str(a, "name");
             var artist = Str(a, "artistName");
             if (string.IsNullOrWhiteSpace(title) || string.IsNullOrWhiteSpace(artist)) { skipped++; continue; }
-            tracks.Add(new PlaylistTrack(title, artist, NullIfEmpty(Str(a, "albumName"))));
+            tracks.Add(new PlaylistTrack(title, artist, NullIfEmpty(Str(a, "albumName")), NullIfEmpty(Str(a, "albumArtistName"))));
         }
         var next = root.TryGetProperty("next", out var n) && n.ValueKind == JsonValueKind.String ? n.GetString() : null;
         return new TracksApiPage(tracks, next, skipped);

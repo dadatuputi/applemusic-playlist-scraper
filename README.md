@@ -26,7 +26,7 @@ foreach (PlaylistTrack t in pl.Tracks)
 |---|---|
 | `AppleMusicPlaylistClient` | `GetPlaylistAsync(string url, CancellationToken ct = default)` → `Task<Playlist>` |
 | `Playlist` | `Id`, `Storefront`, `Name`, `Curator?`, `Url`, `Tracks`, `Truncated`, `TruncationReason?` |
-| `PlaylistTrack` | `Title`, `ArtistName`, `AlbumName?` |
+| `PlaylistTrack` | `Title`, `ArtistName`, `AlbumName?`, `AlbumArtistName?` (only for songs past 300; use `AlbumArtistName ?? ArtistName`) |
 | `AppleMusicPlaylistOptions` | `FetchAllPages` (true), `MaxTracks` (5000), `PageSize` (100), `UserAgent`, `Language` ("en-US") |
 | `PlaylistUrl` | `TryParse(url, out storefront, out id)` |
 
