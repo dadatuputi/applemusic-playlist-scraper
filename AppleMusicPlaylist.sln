@@ -1,0 +1,43 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{6518505E-A6D9-4F37-BC4F-1B1029DE8807}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AppleMusicPlaylist", "src\AppleMusicPlaylist\AppleMusicPlaylist.csproj", "{5AFE4528-4A5E-4FBB-91B3-4BDCAEC86FFB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AppleMusicPlaylist.Cli", "src\AppleMusicPlaylist.Cli\AppleMusicPlaylist.Cli.csproj", "{B8188AB6-5ECD-41D5-9AB9-34C3779DF95F}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{0235706B-9E7D-4E8E-8207-6B6F230A4DE5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AppleMusicPlaylist.Tests", "tests\AppleMusicPlaylist.Tests\AppleMusicPlaylist.Tests.csproj", "{8D0F3B77-F86E-47D0-80D5-D2EBA62EB1B0}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{5AFE4528-4A5E-4FBB-91B3-4BDCAEC86FFB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5AFE4528-4A5E-4FBB-91B3-4BDCAEC86FFB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5AFE4528-4A5E-4FBB-91B3-4BDCAEC86FFB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5AFE4528-4A5E-4FBB-91B3-4BDCAEC86FFB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B8188AB6-5ECD-41D5-9AB9-34C3779DF95F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B8188AB6-5ECD-41D5-9AB9-34C3779DF95F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B8188AB6-5ECD-41D5-9AB9-34C3779DF95F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B8188AB6-5ECD-41D5-9AB9-34C3779DF95F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8D0F3B77-F86E-47D0-80D5-D2EBA62EB1B0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8D0F3B77-F86E-47D0-80D5-D2EBA62EB1B0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8D0F3B77-F86E-47D0-80D5-D2EBA62EB1B0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8D0F3B77-F86E-47D0-80D5-D2EBA62EB1B0}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{5AFE4528-4A5E-4FBB-91B3-4BDCAEC86FFB} = {6518505E-A6D9-4F37-BC4F-1B1029DE8807}
+		{B8188AB6-5ECD-41D5-9AB9-34C3779DF95F} = {6518505E-A6D9-4F37-BC4F-1B1029DE8807}
+		{8D0F3B77-F86E-47D0-80D5-D2EBA62EB1B0} = {0235706B-9E7D-4E8E-8207-6B6F230A4DE5}
+	EndGlobalSection
+EndGlobal
