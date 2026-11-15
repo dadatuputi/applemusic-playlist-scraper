@@ -6,7 +6,8 @@ album) from its `music.apple.com` link. No Apple account, developer membership o
 Built for [lidarr-plugin-applemusic](https://github.com/dadatuputi/lidarr-plugin-applemusic),
 but usable on its own. It has no dependencies outside the .NET base library.
 
-A [daily canary](.github/workflows/canary.yml) reads real public playlists and opens an issue
+A [daily canary](.github/workflows/canary.yml) reads real public playlists, checks the library
+endpoint still rejects a bad user token, and opens an issue
 labelled `canary` when Apple changes something.
 
 ## Use it
@@ -29,6 +30,19 @@ foreach (PlaylistTrack t in pl.Tracks)
 | `PlaylistTrack` | `Title`, `ArtistName`, `AlbumName?`, `AlbumArtistName?` (only for songs past 300; use `AlbumArtistName ?? ArtistName`) |
 | `AppleMusicPlaylistOptions` | `FetchAllPages` (true), `MaxTracks` (5000), `PageSize` (100), `UserAgent`, `Language` ("en-US") |
 | `PlaylistUrl` | `TryParse(url, out storefront, out id)` |
+
+### Private library playlists (optional)
+
+```csharp
+var mine = await client.GetLibraryPlaylistsAsync(musicUserToken);        // LibraryPlaylist(Id "p.xxxx", Name)
+Playlist pl = await client.GetLibraryPlaylistAsync(musicUserToken, mine[0].Id);
+```
+
+`musicUserToken` is the `media-user-token` of a signed-in music.apple.com session. It is a
+credential to the user's Apple account: store it like a password. The library never logs it or
+puts it in an exception. It expires after some months; Apple then answers 401/403 and the
+library throws `AppleMusicAuthException`. Library playlists are never `Truncated` except at
+`MaxTracks`, and their tracks have no `AlbumArtistName`.
 
 Errors: `ArgumentException` for a non-playlist URL, `HttpRequestException` when the page can't be
 fetched (a private or deleted playlist gives 404), `AppleMusicScrapeException` when the page no
@@ -75,8 +89,8 @@ then reference `Submodules/applemusic-playlist-scraper/src/AppleMusicPlaylist/Ap
   with Apple's terms; `music.apple.com/robots.txt` disallows `/v1/*`. Set
   `FetchAllPages = false` to read only the page (first 300 songs). One playlist a day is a very
   light load.
-- Only public playlists work. A personal library or "Favorite Songs" list must be shared
-  publicly first.
+- Without a user token, only public playlists work. Private library access sends the user's own
+  token to Apple's `/v1/me/library` endpoints, the same calls the web player makes.
 - The official route is MusicKit / the Apple Music API, which needs a paid Apple Developer
   membership.
 - GitHub pauses scheduled workflows in a repository with no activity for 60 days. If the canary

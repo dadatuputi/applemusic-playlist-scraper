@@ -10,6 +10,29 @@ using AppleMusicPlaylist;
 //   --dump DIR                  save the page's server-data JSON and API pages (fixture capture)
 
 var argList = args.ToList();
+
+// Canary for the library path: an invalid user token must give AppleMusicAuthException,
+// which proves the web-player token was found and the library endpoint still answers 401/403.
+if (argList.Remove("--library-auth-check"))
+{
+    using var c = new AppleMusicPlaylistClient();
+    try
+    {
+        await c.GetLibraryPlaylistsAsync("invalid-user-token");
+        Console.Error.WriteLine("FAIL: an invalid user token was accepted");
+        return 2;
+    }
+    catch (AppleMusicAuthException e)
+    {
+        Console.Error.WriteLine($"OK: {e.Message}");
+        return 0;
+    }
+    catch (Exception e) when (e is HttpRequestException or AppleMusicScrapeException)
+    {
+        Console.Error.WriteLine($"FAIL: {e.Message}");
+        return 2;
+    }
+}
 if (argList.Count == 0 || argList.Contains("-h") || argList.Contains("--help"))
 {
     Console.Error.WriteLine("usage: applemusic-playlist <url> [--format text|json|albums] [--page-only] [--min-tracks N] [--expect-complete] [--dump DIR]");

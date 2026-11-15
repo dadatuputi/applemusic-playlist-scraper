@@ -125,6 +125,24 @@ public static partial class PageParser
         return new TracksApiPage(tracks, next, skipped);
     }
 
+    /// <summary>Parses one response of <c>/v1/me/library/playlists</c>.</summary>
+    public static (IReadOnlyList<LibraryPlaylist> Playlists, string? NextPath) ParseLibraryPlaylists(string json)
+    {
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+        if (!root.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Array)
+            throw new AppleMusicScrapeException("Library playlists response has no data array.");
+        var list = new List<LibraryPlaylist>();
+        foreach (var item in data.EnumerateArray())
+        {
+            var id = Str(item, "id");
+            var name = item.TryGetProperty("attributes", out var a) ? Str(a, "name") : null;
+            if (!string.IsNullOrEmpty(id)) list.Add(new LibraryPlaylist(id, string.IsNullOrWhiteSpace(name) ? id : name));
+        }
+        var next = root.TryGetProperty("next", out var n) && n.ValueKind == JsonValueKind.String ? n.GetString() : null;
+        return (list, next);
+    }
+
     /// <summary>Finds the path of the main JS bundle (e.g. <c>/assets/index~abc123.js</c>).</summary>
     public static string? FindBundlePath(string html)
     {

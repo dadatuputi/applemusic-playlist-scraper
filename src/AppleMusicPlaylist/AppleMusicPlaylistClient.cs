@@ -94,28 +94,129 @@ public sealed class AppleMusicPlaylistClient : IDisposable
         };
     }
 
-    /// <returns>True if <see cref="AppleMusicPlaylistOptions.MaxTracks"/> stopped the read early.</returns>
-    private async Task<bool> ReadRemainingAsync(string html, string nextPath, List<PlaylistTrack> tracks, CancellationToken ct)
+    /// <summary>
+    /// Lists the playlists in the user's own Apple Music library.
+    /// </summary>
+    /// <param name="musicUserToken">The <c>media-user-token</c> of a signed-in music.apple.com session. Never logged.</param>
+    /// <exception cref="AppleMusicAuthException">Apple rejected the token (expired or revoked).</exception>
+    public async Task<IReadOnlyList<LibraryPlaylist>> GetLibraryPlaylistsAsync(string musicUserToken, CancellationToken cancellationToken = default)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(musicUserToken);
+        var token = await GetDeveloperTokenAsync(null, cancellationToken).ConfigureAwait(false);
+
+        var result = new List<LibraryPlaylist>();
+        string? next = "/v1/me/library/playlists?limit=100";
+        for (var guard = 0; next is not null; guard++)
+        {
+            if (guard > 1000) throw new AppleMusicScrapeException("Paging did not terminate.");
+            var json = await GetLibraryAsync(next, token, musicUserToken, cancellationToken).ConfigureAwait(false);
+            var (page, nextPath) = PageParser.ParseLibraryPlaylists(json);
+            result.AddRange(page);
+            next = nextPath;
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Reads one playlist from the user's own library. <see cref="Playlist.Truncated"/> is set only
+    /// when <see cref="AppleMusicPlaylistOptions.MaxTracks"/> is reached. Library songs have no
+    /// album artist, so <see cref="PlaylistTrack.AlbumArtistName"/> is null.
+    /// </summary>
+    /// <param name="musicUserToken">The <c>media-user-token</c> of a signed-in music.apple.com session. Never logged.</param>
+    /// <param name="libraryPlaylistId">Library playlist id, e.g. <c>p.AbCdEf</c>.</param>
+    /// <exception cref="AppleMusicAuthException">Apple rejected the token (expired or revoked).</exception>
+    /// <exception cref="HttpRequestException">The playlist does not exist (404).</exception>
+    public async Task<Playlist> GetLibraryPlaylistAsync(string musicUserToken, string libraryPlaylistId, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(musicUserToken);
+        ArgumentException.ThrowIfNullOrWhiteSpace(libraryPlaylistId);
+        var token = await GetDeveloperTokenAsync(null, cancellationToken).ConfigureAwait(false);
+        var id = Uri.EscapeDataString(libraryPlaylistId.Trim());
+
+        var meta = await GetLibraryAsync($"/v1/me/library/playlists/{id}", token, musicUserToken, cancellationToken).ConfigureAwait(false);
+        var name = PageParser.ParseLibraryPlaylists(meta).Playlists.FirstOrDefault()?.Name ?? libraryPlaylistId;
+
+        var tracks = new List<PlaylistTrack>();
+        bool truncated = false;
+        try
+        {
+            truncated = await ReadPagesAsync($"/v1/me/library/playlists/{id}/tracks?limit={_options.PageSize}", token, musicUserToken, tracks, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (HttpRequestException e) when (e.StatusCode == System.Net.HttpStatusCode.NotFound && tracks.Count == 0)
+        {
+            // Apple answers 404 for the tracks of an empty library playlist (the playlist itself exists, checked above).
+        }
+
+        if (tracks.Count > _options.MaxTracks)
+        {
+            tracks.RemoveRange(_options.MaxTracks, tracks.Count - _options.MaxTracks);
+            truncated = true;
+        }
+
+        return new Playlist
+        {
+            Id = libraryPlaylistId.Trim(),
+            Storefront = "",
+            Name = name,
+            Curator = null,
+            Url = $"{WebBase}/library/playlist/{id}",
+            Tracks = tracks,
+            Truncated = truncated,
+            TruncationReason = truncated ? $"Stopped at MaxTracks ({_options.MaxTracks})." : null,
+        };
+    }
+
+    /// <summary>Takes the web player's public token from the site's JS bundle.</summary>
+    /// <param name="html">A music.apple.com page already fetched, or null to fetch one.</param>
+    private async Task<string> GetDeveloperTokenAsync(string? html, CancellationToken ct)
+    {
+        html ??= await GetStringAsync($"{WebBase}/us/browse", api: false, token: null, ct).ConfigureAwait(false);
         var bundlePath = PageParser.FindBundlePath(html)
             ?? throw new AppleMusicScrapeException("Page has no /assets/index*.js bundle reference.");
         var js = await GetStringAsync(WebBase + bundlePath, api: false, token: null, ct).ConfigureAwait(false);
-        var token = PageParser.FindWebPlayToken(js, _clock())
+        return PageParser.FindWebPlayToken(js, _clock())
             ?? throw new AppleMusicScrapeException("No unexpired web-player token found in the JS bundle.");
+    }
 
-        string? next = nextPath;
+    /// <returns>True if <see cref="AppleMusicPlaylistOptions.MaxTracks"/> stopped the read early.</returns>
+    private async Task<bool> ReadRemainingAsync(string html, string nextPath, List<PlaylistTrack> tracks, CancellationToken ct)
+    {
+        var token = await GetDeveloperTokenAsync(html, ct).ConfigureAwait(false);
+        return await ReadPagesAsync(nextPath, token, null, tracks, ct).ConfigureAwait(false);
+    }
+
+    /// <returns>True if <see cref="AppleMusicPlaylistOptions.MaxTracks"/> stopped the read early.</returns>
+    private async Task<bool> ReadPagesAsync(string firstPath, string token, string? userToken, List<PlaylistTrack> tracks, CancellationToken ct)
+    {
+        string? next = firstPath;
         var guard = 0;
         while (next is not null)
         {
             if (tracks.Count >= _options.MaxTracks) return true;
             if (++guard > 1000) throw new AppleMusicScrapeException("Paging did not terminate.");
 
-            var resp = await GetStringAsync(ApiBase + WithQuery(next), api: true, token, ct).ConfigureAwait(false);
+            var resp = userToken is null
+                ? await GetStringAsync(ApiBase + WithQuery(next), api: true, token, ct).ConfigureAwait(false)
+                : await GetLibraryAsync(next, token, userToken, ct).ConfigureAwait(false);
             var page = PageParser.ParseTracksApi(resp);
             tracks.AddRange(page.Tracks);
             next = page.NextPath;
         }
         return false;
+    }
+
+    private async Task<string> GetLibraryAsync(string path, string token, string userToken, CancellationToken ct)
+    {
+        try
+        {
+            return await GetStringAsync(ApiBase + WithQuery(path), api: true, token, ct, userToken).ConfigureAwait(false);
+        }
+        catch (HttpRequestException e) when (e.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+        {
+            throw new AppleMusicAuthException(
+                $"Apple Music rejected the Music User Token ({(int)e.StatusCode!}). It has probably expired; sign in at music.apple.com and copy a new one.");
+        }
     }
 
     private string WithQuery(string path)
@@ -125,7 +226,7 @@ public sealed class AppleMusicPlaylistClient : IDisposable
         return path;
     }
 
-    private async Task<string> GetStringAsync(string url, bool api, string? token, CancellationToken ct)
+    private async Task<string> GetStringAsync(string url, bool api, string? token, CancellationToken ct, string? userToken = null)
     {
         using var req = new HttpRequestMessage(HttpMethod.Get, url);
         req.Headers.TryAddWithoutValidation("User-Agent", _options.UserAgent);
@@ -136,6 +237,7 @@ public sealed class AppleMusicPlaylistClient : IDisposable
             req.Headers.TryAddWithoutValidation("Origin", WebBase);
             req.Headers.TryAddWithoutValidation("Referer", WebBase + "/");
             req.Headers.Accept.ParseAdd("application/json");
+            if (userToken is not null) req.Headers.TryAddWithoutValidation("media-user-token", userToken);
         }
         else
         {

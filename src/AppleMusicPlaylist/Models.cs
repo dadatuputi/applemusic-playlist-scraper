@@ -58,6 +58,18 @@ public sealed class AppleMusicPlaylistOptions
     public string Language { get; set; } = "en-US";
 }
 
+/// <summary>A playlist in the signed-in user's own library (id like <c>p.xxxx</c>).</summary>
+public sealed record LibraryPlaylist(string Id, string Name);
+
+/// <summary>
+/// Thrown when Apple rejects the Music User Token (HTTP 401 or 403), usually because it expired.
+/// The message never contains the token.
+/// </summary>
+public sealed class AppleMusicAuthException : Exception
+{
+    public AppleMusicAuthException(string message) : base(message) { }
+}
+
 /// <summary>Thrown when the page or API no longer has the shape this library expects.</summary>
 public sealed class AppleMusicScrapeException : Exception
 {

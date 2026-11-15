@@ -41,6 +41,9 @@ jobs:
           dotnet src/AppleMusicPlaylist.Cli/bin/Release/net8.0/applemusic-playlist.dll \
             "${{ matrix.url }}" ${{ matrix.args }} --format albums --dump dump > albums.tsv
           head -n 20 albums.tsv
+      - name: Library endpoint answers 401 to a bad user token
+        if: matrix.name == 'page'
+        run: dotnet src/AppleMusicPlaylist.Cli/bin/Release/net8.0/applemusic-playlist.dll --library-auth-check
       - name: Upload responses (JWTs redacted)
         if: always()
         uses: actions/upload-artifact@v4
